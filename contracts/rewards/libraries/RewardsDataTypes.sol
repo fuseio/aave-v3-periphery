@@ -2,7 +2,6 @@
 pragma solidity ^0.8.10;
 
 import {ITransferStrategyBase} from '../interfaces/ITransferStrategyBase.sol';
-import {IEACAggregatorProxy} from '../../misc/interfaces/IEACAggregatorProxy.sol';
 
 library RewardsDataTypes {
   struct RewardsConfigInput {
@@ -12,7 +11,7 @@ library RewardsDataTypes {
     address asset;
     address reward;
     ITransferStrategyBase transferStrategy;
-    IEACAggregatorProxy rewardOracle;
+    uint256 pairIndex;
   }
 
   struct UserAssetBalance {

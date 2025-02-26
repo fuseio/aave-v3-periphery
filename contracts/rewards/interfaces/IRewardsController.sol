@@ -3,7 +3,6 @@ pragma solidity ^0.8.10;
 
 import {IRewardsDistributor} from './IRewardsDistributor.sol';
 import {ITransferStrategyBase} from './ITransferStrategyBase.sol';
-import {IEACAggregatorProxy} from '../../misc/interfaces/IEACAggregatorProxy.sol';
 import {RewardsDataTypes} from '../libraries/RewardsDataTypes.sol';
 
 /**
@@ -45,9 +44,9 @@ interface IRewardsController is IRewardsDistributor {
   /**
    * @dev Emitted when the reward oracle is updated
    * @param reward The address of the token reward
-   * @param rewardOracle The address of oracle
+   * @param pairIndex The index of the price pair in the SupraSValueFeed
    */
-  event RewardOracleUpdated(address indexed reward, address indexed rewardOracle);
+  event RewardOracleUpdated(address indexed reward, uint256 indexed pairIndex);
 
   /**
    * @dev Whitelists an address to claim the rewards on behalf of another address
@@ -66,20 +65,20 @@ interface IRewardsController is IRewardsDistributor {
   /**
    * @dev Sets an Aave Oracle contract to enforce rewards with a source of value.
    * @notice At the moment of reward configuration, the Incentives Controller performs
-   * a check to see if the reward asset oracle is compatible with IEACAggregator proxy.
+   * a check to see if the reward asset oracle is compatible with SupraSValueFeed.
    * This check is enforced for integrators to be able to show incentives at
    * the current Aave UI without the need to setup an external price registry
    * @param reward The address of the reward to set the price aggregator
-   * @param rewardOracle The address of price aggregator that follows IEACAggregatorProxy interface
+   * @param pairIndex The index of the price pair in the SupraSValueFeed
    */
-  function setRewardOracle(address reward, IEACAggregatorProxy rewardOracle) external;
+  function setRewardOracle(address reward, uint256 pairIndex) external;
 
   /**
-   * @dev Get the price aggregator oracle address
+   * @dev Get the price pair index
    * @param reward The address of the reward
-   * @return The price oracle of the reward
+   * @return The price pair index of the reward
    */
-  function getRewardOracle(address reward) external view returns (address);
+  function getRewardOracle(address reward) external view returns (uint256);
 
   /**
    * @dev Returns the whitelisted claimer for a certain address (0x0 if not set)
@@ -104,8 +103,7 @@ interface IRewardsController is IRewardsDistributor {
    *   address asset: The asset address to incentivize
    *   address reward: The reward token address
    *   ITransferStrategy transferStrategy: The TransferStrategy address with the install hook and claim logic.
-   *   IEACAggregatorProxy rewardOracle: The Price Oracle of a reward to visualize the incentives at the UI Frontend.
-   *                                     Must follow Chainlink Aggregator IEACAggregatorProxy interface to be compatible.
+   *   uint256 pairIndex: The index of the price pair in the SupraSValueFeed
    */
   function configureAssets(RewardsDataTypes.RewardsConfigInput[] memory config) external;
 
@@ -200,4 +198,10 @@ interface IRewardsController is IRewardsDistributor {
   function claimAllRewardsToSelf(
     address[] calldata assets
   ) external returns (address[] memory rewardsList, uint256[] memory claimedAmounts);
+
+  /**
+   * @dev Returns the address of the SupraSValueFeed
+   * @return The address of the SupraSValueFeed
+   */
+  function SUPRA_S_VALUE_FEED() external view returns (address);
 }
