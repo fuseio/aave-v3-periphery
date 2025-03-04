@@ -2,11 +2,11 @@
 pragma solidity ^0.8.10;
 
 import {Ownable} from '@aave/core-v3/contracts/dependencies/openzeppelin/contracts/Ownable.sol';
-import {IEACAggregatorProxy} from '../misc/interfaces/IEACAggregatorProxy.sol';
 import {IEmissionManager} from './interfaces/IEmissionManager.sol';
 import {ITransferStrategyBase} from './interfaces/ITransferStrategyBase.sol';
 import {IRewardsController} from './interfaces/IRewardsController.sol';
 import {RewardsDataTypes} from './libraries/RewardsDataTypes.sol';
+import {ISupraSValueFeed} from '@aave/core-v3/contracts/interfaces/ISupraSValueFeed.sol';
 
 /**
  * @title EmissionManager
@@ -54,9 +54,9 @@ contract EmissionManager is Ownable, IEmissionManager {
   /// @inheritdoc IEmissionManager
   function setRewardOracle(
     address reward,
-    IEACAggregatorProxy rewardOracle
+    uint256 pairIndex
   ) external override onlyEmissionAdmin(reward) {
-    _rewardsController.setRewardOracle(reward, rewardOracle);
+    _rewardsController.setRewardOracle(reward, pairIndex);
   }
 
   /// @inheritdoc IEmissionManager

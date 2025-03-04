@@ -8,7 +8,7 @@ import {RewardsDistributor} from './RewardsDistributor.sol';
 import {IRewardsController} from './interfaces/IRewardsController.sol';
 import {ITransferStrategyBase} from './interfaces/ITransferStrategyBase.sol';
 import {RewardsDataTypes} from './libraries/RewardsDataTypes.sol';
-import {IEACAggregatorProxy} from '../misc/interfaces/IEACAggregatorProxy.sol';
+import {ISupraSValueFeed} from '@aave/core-v3/contracts/interfaces/ISupraSValueFeed.sol';
 
 /**
  * @title RewardsController
@@ -19,6 +19,8 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
   using SafeCast for uint256;
 
   uint256 public constant REVISION = 1;
+
+  ISupraSValueFeed internal _supraSValueFeed;
 
   // This mapping allows whitelisted addresses to claim on behalf of others
   // useful for contracts that hold tokens to be rewarded but don't have any native logic to claim Liquidity Mining rewards
@@ -34,14 +36,16 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
   // the current Aave UI without the need to setup an external price registry
   // At the moment of reward configuration, the Incentives Controller performs
   // a check to see if the provided reward oracle contains `latestAnswer`.
-  mapping(address => IEACAggregatorProxy) internal _rewardOracle;
+  mapping(address => uint256) internal _rewardPairIndex;
 
   modifier onlyAuthorizedClaimers(address claimer, address user) {
     require(_authorizedClaimers[user] == claimer, 'CLAIMER_UNAUTHORIZED');
     _;
   }
 
-  constructor(address emissionManager) RewardsDistributor(emissionManager) {}
+  constructor(address emissionManager, address supraSValueFeed) RewardsDistributor(emissionManager) {
+    _supraSValueFeed = ISupraSValueFeed(supraSValueFeed);
+  }
 
   /**
    * @dev Initialize for RewardsController
@@ -63,13 +67,18 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
   }
 
   /// @inheritdoc IRewardsController
-  function getRewardOracle(address reward) external view override returns (address) {
-    return address(_rewardOracle[reward]);
+  function getRewardOracle(address reward) external view override returns (uint256) {
+    return _rewardPairIndex[reward];
   }
 
   /// @inheritdoc IRewardsController
   function getTransferStrategy(address reward) external view override returns (address) {
     return address(_transferStrategy[reward]);
+  }
+
+  /// @inheritdoc IRewardsController
+  function SUPRA_S_VALUE_FEED() external view override returns (address) {
+    return address(_supraSValueFeed);
   }
 
   /// @inheritdoc IRewardsController
@@ -84,7 +93,7 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
       _installTransferStrategy(config[i].reward, config[i].transferStrategy);
 
       // Set reward oracle, enforces input oracle to have latestPrice function
-      _setRewardOracle(config[i].reward, config[i].rewardOracle);
+      _setRewardOracle(config[i].reward, config[i].pairIndex);
     }
     _configureAssets(config);
   }
@@ -100,9 +109,9 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
   /// @inheritdoc IRewardsController
   function setRewardOracle(
     address reward,
-    IEACAggregatorProxy rewardOracle
+    uint256 pairIndex
   ) external onlyEmissionManager {
-    _setRewardOracle(reward, rewardOracle);
+    _setRewardOracle(reward, pairIndex);
   }
 
   /// @inheritdoc IRewardsController
@@ -341,15 +350,15 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
   }
 
   /**
-   * @dev Update the Price Oracle of a reward token. The Price Oracle must follow Chainlink IEACAggregatorProxy interface.
+   * @dev Update the Price Oracle of a reward token. The Price Oracle must follow SupraSValueFeed interface.
    * @notice The Price Oracle of a reward is used for displaying correct data about the incentives at the UI frontend.
    * @param reward The address of the reward token
-   * @param rewardOracle The address of the price oracle
+   * @param pairIndex The index of the price pair in the SupraSValueFeed
    */
 
-  function _setRewardOracle(address reward, IEACAggregatorProxy rewardOracle) internal {
-    require(rewardOracle.latestAnswer() > 0, 'ORACLE_MUST_RETURN_PRICE');
-    _rewardOracle[reward] = rewardOracle;
-    emit RewardOracleUpdated(reward, address(rewardOracle));
+  function _setRewardOracle(address reward, uint256 pairIndex) internal {
+    require(_supraSValueFeed.getSvalue(pairIndex).price > 0, 'ORACLE_MUST_RETURN_PRICE');
+    _rewardPairIndex[reward] = pairIndex;
+    emit RewardOracleUpdated(reward, pairIndex);
   }
-}
+} 

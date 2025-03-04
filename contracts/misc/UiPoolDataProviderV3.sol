@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {IERC20Detailed} from '@aave/core-v3/contracts/dependencies/openzeppelin/contracts/IERC20Detailed.sol';
 import {IPoolAddressesProvider} from '@aave/core-v3/contracts/interfaces/IPoolAddressesProvider.sol';
 import {IPool} from '@aave/core-v3/contracts/interfaces/IPool.sol';
-import {IAaveOracle} from '@aave/core-v3/contracts/interfaces/IAaveOracle.sol';
+import {IAaveSupraOracle} from '@aave/core-v3/contracts/interfaces/IAaveSupraOracle.sol';
 import {IAToken} from '@aave/core-v3/contracts/interfaces/IAToken.sol';
 import {IVariableDebtToken} from '@aave/core-v3/contracts/interfaces/IVariableDebtToken.sol';
 import {IStableDebtToken} from '@aave/core-v3/contracts/interfaces/IStableDebtToken.sol';
@@ -14,26 +14,23 @@ import {WadRayMath} from '@aave/core-v3/contracts/protocol/libraries/math/WadRay
 import {ReserveConfiguration} from '@aave/core-v3/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
 import {UserConfiguration} from '@aave/core-v3/contracts/protocol/libraries/configuration/UserConfiguration.sol';
 import {DataTypes} from '@aave/core-v3/contracts/protocol/libraries/types/DataTypes.sol';
-import {IEACAggregatorProxy} from './interfaces/IEACAggregatorProxy.sol';
 import {IERC20DetailedBytes} from './interfaces/IERC20DetailedBytes.sol';
 import {IUiPoolDataProviderV3} from './interfaces/IUiPoolDataProviderV3.sol';
+import {ISupraSValueFeed} from '@aave/core-v3/contracts/interfaces/ISupraSValueFeed.sol';
 
 contract UiPoolDataProviderV3 is IUiPoolDataProviderV3 {
   using WadRayMath for uint256;
   using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
   using UserConfiguration for DataTypes.UserConfigurationMap;
 
-  IEACAggregatorProxy public immutable networkBaseTokenPriceInUsdProxyAggregator;
-  IEACAggregatorProxy public immutable marketReferenceCurrencyPriceInUsdProxyAggregator;
+  ISupraSValueFeed public immutable supraSValueFeed;
+  uint256 public immutable networkBaseTokenPriceInUsdPairIndex;
   uint256 public constant ETH_CURRENCY_UNIT = 1 ether;
-  address public constant MKR_ADDRESS = 0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2;
+  address public constant MKR_ADDRESS = 0x303CC3f27034C4E3933DaB8E601178eD3d2A1E3c;
 
-  constructor(
-    IEACAggregatorProxy _networkBaseTokenPriceInUsdProxyAggregator,
-    IEACAggregatorProxy _marketReferenceCurrencyPriceInUsdProxyAggregator
-  ) {
-    networkBaseTokenPriceInUsdProxyAggregator = _networkBaseTokenPriceInUsdProxyAggregator;
-    marketReferenceCurrencyPriceInUsdProxyAggregator = _marketReferenceCurrencyPriceInUsdProxyAggregator;
+  constructor(ISupraSValueFeed _supraSValueFeed, uint256 _networkBaseTokenPriceInUsdPairIndex) {
+    supraSValueFeed = _supraSValueFeed;
+    networkBaseTokenPriceInUsdPairIndex = _networkBaseTokenPriceInUsdPairIndex;
   }
 
   function getReservesList(
@@ -46,7 +43,7 @@ contract UiPoolDataProviderV3 is IUiPoolDataProviderV3 {
   function getReservesData(
     IPoolAddressesProvider provider
   ) public view override returns (AggregatedReserveData[] memory, BaseCurrencyInfo memory) {
-    IAaveOracle oracle = IAaveOracle(provider.getPriceOracle());
+    IAaveSupraOracle oracle = IAaveSupraOracle(provider.getPriceOracle());
     IPool pool = IPool(provider.getPool());
     AaveProtocolDataProvider poolDataProvider = AaveProtocolDataProvider(
       provider.getPoolDataProvider()
@@ -80,7 +77,7 @@ contract UiPoolDataProviderV3 is IUiPoolDataProviderV3 {
       reserveData.priceInMarketReferenceCurrency = oracle.getAssetPrice(
         reserveData.underlyingAsset
       );
-      reserveData.priceOracle = oracle.getSourceOfAsset(reserveData.underlyingAsset);
+      reserveData.priceOracle = oracle.getSourceOfAsset();
       reserveData.availableLiquidity = IERC20Detailed(reserveData.underlyingAsset).balanceOf(
         reserveData.aTokenAddress
       );
@@ -200,22 +197,17 @@ contract UiPoolDataProviderV3 is IUiPoolDataProviderV3 {
 
       reserveData.borrowableInIsolation = reserveConfigurationMap.getBorrowableInIsolation();
     }
-
+    ISupraSValueFeed.priceFeed memory networkBaseTokenPriceInUsd = supraSValueFeed.getSvalue(
+      networkBaseTokenPriceInUsdPairIndex
+    );
     BaseCurrencyInfo memory baseCurrencyInfo;
-    baseCurrencyInfo.networkBaseTokenPriceInUsd = networkBaseTokenPriceInUsdProxyAggregator
-      .latestAnswer();
-    baseCurrencyInfo.networkBaseTokenPriceDecimals = networkBaseTokenPriceInUsdProxyAggregator
-      .decimals();
+    baseCurrencyInfo.networkBaseTokenPriceInUsd = int256(networkBaseTokenPriceInUsd.price);
+    baseCurrencyInfo.networkBaseTokenPriceDecimals = uint8(networkBaseTokenPriceInUsd.decimals);
 
     try oracle.BASE_CURRENCY_UNIT() returns (uint256 baseCurrencyUnit) {
       baseCurrencyInfo.marketReferenceCurrencyUnit = baseCurrencyUnit;
       baseCurrencyInfo.marketReferenceCurrencyPriceInUsd = int256(baseCurrencyUnit);
-    } catch (bytes memory /*lowLevelData*/) {
-      baseCurrencyInfo.marketReferenceCurrencyUnit = ETH_CURRENCY_UNIT;
-      baseCurrencyInfo
-        .marketReferenceCurrencyPriceInUsd = marketReferenceCurrencyPriceInUsdProxyAggregator
-        .latestAnswer();
-    }
+    } catch (bytes memory /*lowLevelData*/) {}
 
     return (reservesData, baseCurrencyInfo);
   }

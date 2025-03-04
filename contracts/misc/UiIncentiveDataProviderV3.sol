@@ -8,8 +8,9 @@ import {IncentivizedERC20} from '@aave/core-v3/contracts/protocol/tokenization/b
 import {UserConfiguration} from '@aave/core-v3/contracts/protocol/libraries/configuration/UserConfiguration.sol';
 import {DataTypes} from '@aave/core-v3/contracts/protocol/libraries/types/DataTypes.sol';
 import {IRewardsController} from '../rewards/interfaces/IRewardsController.sol';
-import {IEACAggregatorProxy} from './interfaces/IEACAggregatorProxy.sol';
 import {IUiIncentiveDataProviderV3} from './interfaces/IUiIncentiveDataProviderV3.sol';
+import {ISupraSValueFeed} from '@aave/core-v3/contracts/interfaces/ISupraSValueFeed.sol';
+import {IEACAggregatorProxy} from './interfaces/IEACAggregatorProxy.sol';
 
 contract UiIncentiveDataProviderV3 is IUiIncentiveDataProviderV3 {
   using UserConfiguration for DataTypes.UserConfigurationMap;
@@ -81,16 +82,15 @@ contract UiIncentiveDataProviderV3 is IUiIncentiveDataProviderV3 {
           rewardInformation.rewardTokenSymbol = IERC20Detailed(rewardInformation.rewardTokenAddress)
             .symbol();
 
-          // Get price of reward token from Chainlink Proxy Oracle
-          rewardInformation.rewardOracleAddress = aTokenIncentiveController.getRewardOracle(
-            rewardInformation.rewardTokenAddress
+          // Get price of reward token from SupraSValueFeed
+          rewardInformation.rewardOracleAddress = aTokenIncentiveController.SUPRA_S_VALUE_FEED();
+          ISupraSValueFeed supraSValueFeed = ISupraSValueFeed(
+            rewardInformation.rewardOracleAddress
           );
-          rewardInformation.priceFeedDecimals = IEACAggregatorProxy(
-            rewardInformation.rewardOracleAddress
-          ).decimals();
-          rewardInformation.rewardPriceFeed = IEACAggregatorProxy(
-            rewardInformation.rewardOracleAddress
-          ).latestAnswer();
+          uint256 pairIndex = aTokenIncentiveController.getRewardOracle(rewardInformation.rewardTokenAddress);
+          ISupraSValueFeed.priceFeed memory svalue = supraSValueFeed.getSvalue(pairIndex);
+          rewardInformation.priceFeedDecimals = uint8(svalue.decimals);
+          rewardInformation.rewardPriceFeed = int256(svalue.price);
 
           aRewardsInformation[j] = rewardInformation;
         }
@@ -135,16 +135,15 @@ contract UiIncentiveDataProviderV3 is IUiIncentiveDataProviderV3 {
           rewardInformation.rewardTokenSymbol = IERC20Detailed(rewardInformation.rewardTokenAddress)
             .symbol();
 
-          // Get price of reward token from Chainlink Proxy Oracle
-          rewardInformation.rewardOracleAddress = vTokenIncentiveController.getRewardOracle(
-            rewardInformation.rewardTokenAddress
+          // Get price of reward token from SupraSValueFeed
+          rewardInformation.rewardOracleAddress = vTokenIncentiveController.SUPRA_S_VALUE_FEED();
+          ISupraSValueFeed supraSValueFeed = ISupraSValueFeed(
+            rewardInformation.rewardOracleAddress
           );
-          rewardInformation.priceFeedDecimals = IEACAggregatorProxy(
-            rewardInformation.rewardOracleAddress
-          ).decimals();
-          rewardInformation.rewardPriceFeed = IEACAggregatorProxy(
-            rewardInformation.rewardOracleAddress
-          ).latestAnswer();
+          uint256 pairIndex = vTokenIncentiveController.getRewardOracle(rewardInformation.rewardTokenAddress);
+          ISupraSValueFeed.priceFeed memory svalue = supraSValueFeed.getSvalue(pairIndex);
+          rewardInformation.priceFeedDecimals = uint8(svalue.decimals);
+          rewardInformation.rewardPriceFeed = int256(svalue.price);
 
           vRewardsInformation[j] = rewardInformation;
         }
@@ -189,16 +188,15 @@ contract UiIncentiveDataProviderV3 is IUiIncentiveDataProviderV3 {
           rewardInformation.rewardTokenSymbol = IERC20Detailed(rewardInformation.rewardTokenAddress)
             .symbol();
 
-          // Get price of reward token from Chainlink Proxy Oracle
-          rewardInformation.rewardOracleAddress = sTokenIncentiveController.getRewardOracle(
-            rewardInformation.rewardTokenAddress
+          // Get price of reward token from SupraSValueFeed
+          rewardInformation.rewardOracleAddress = sTokenIncentiveController.SUPRA_S_VALUE_FEED();
+          ISupraSValueFeed supraSValueFeed = ISupraSValueFeed(
+            rewardInformation.rewardOracleAddress
           );
-          rewardInformation.priceFeedDecimals = IEACAggregatorProxy(
-            rewardInformation.rewardOracleAddress
-          ).decimals();
-          rewardInformation.rewardPriceFeed = IEACAggregatorProxy(
-            rewardInformation.rewardOracleAddress
-          ).latestAnswer();
+          uint256 pairIndex = sTokenIncentiveController.getRewardOracle(rewardInformation.rewardTokenAddress);
+          ISupraSValueFeed.priceFeed memory svalue = supraSValueFeed.getSvalue(pairIndex);
+          rewardInformation.priceFeedDecimals = uint8(svalue.decimals);
+          rewardInformation.rewardPriceFeed = int256(svalue.price);
 
           sRewardsInformation[j] = rewardInformation;
         }
@@ -269,16 +267,15 @@ contract UiIncentiveDataProviderV3 is IUiIncentiveDataProviderV3 {
             userRewardInformation.rewardTokenAddress
           ).symbol();
 
-          // Get price of reward token from Chainlink Proxy Oracle
-          userRewardInformation.rewardOracleAddress = aTokenIncentiveController.getRewardOracle(
-            userRewardInformation.rewardTokenAddress
+          // Get price of reward token from SupraSValueFeed
+          userRewardInformation.rewardOracleAddress = aTokenIncentiveController.SUPRA_S_VALUE_FEED();
+          ISupraSValueFeed supraSValueFeed = ISupraSValueFeed(
+            userRewardInformation.rewardOracleAddress
           );
-          userRewardInformation.priceFeedDecimals = IEACAggregatorProxy(
-            userRewardInformation.rewardOracleAddress
-          ).decimals();
-          userRewardInformation.rewardPriceFeed = IEACAggregatorProxy(
-            userRewardInformation.rewardOracleAddress
-          ).latestAnswer();
+          uint256 pairIndex = aTokenIncentiveController.getRewardOracle(userRewardInformation.rewardTokenAddress);
+          ISupraSValueFeed.priceFeed memory svalue = supraSValueFeed.getSvalue(pairIndex);
+          userRewardInformation.priceFeedDecimals = uint8(svalue.decimals);
+          userRewardInformation.rewardPriceFeed = int256(svalue.price);
 
           aUserRewardsInformation[j] = userRewardInformation;
         }
@@ -322,16 +319,15 @@ contract UiIncentiveDataProviderV3 is IUiIncentiveDataProviderV3 {
             userRewardInformation.rewardTokenAddress
           ).symbol();
 
-          // Get price of reward token from Chainlink Proxy Oracle
-          userRewardInformation.rewardOracleAddress = vTokenIncentiveController.getRewardOracle(
-            userRewardInformation.rewardTokenAddress
+          // Get price of reward token from SupraSValueFeed
+          userRewardInformation.rewardOracleAddress = vTokenIncentiveController.SUPRA_S_VALUE_FEED();
+          ISupraSValueFeed supraSValueFeed = ISupraSValueFeed(
+            userRewardInformation.rewardOracleAddress
           );
-          userRewardInformation.priceFeedDecimals = IEACAggregatorProxy(
-            userRewardInformation.rewardOracleAddress
-          ).decimals();
-          userRewardInformation.rewardPriceFeed = IEACAggregatorProxy(
-            userRewardInformation.rewardOracleAddress
-          ).latestAnswer();
+          uint256 pairIndex = vTokenIncentiveController.getRewardOracle(userRewardInformation.rewardTokenAddress);
+          ISupraSValueFeed.priceFeed memory svalue = supraSValueFeed.getSvalue(pairIndex);
+          userRewardInformation.priceFeedDecimals = uint8(svalue.decimals);
+          userRewardInformation.rewardPriceFeed = int256(svalue.price);
 
           vUserRewardsInformation[j] = userRewardInformation;
         }
@@ -375,16 +371,15 @@ contract UiIncentiveDataProviderV3 is IUiIncentiveDataProviderV3 {
             userRewardInformation.rewardTokenAddress
           ).symbol();
 
-          // Get price of reward token from Chainlink Proxy Oracle
-          userRewardInformation.rewardOracleAddress = sTokenIncentiveController.getRewardOracle(
-            userRewardInformation.rewardTokenAddress
+          // Get price of reward token from SupraSValueFeed
+          userRewardInformation.rewardOracleAddress = sTokenIncentiveController.SUPRA_S_VALUE_FEED();
+          ISupraSValueFeed supraSValueFeed = ISupraSValueFeed(
+            userRewardInformation.rewardOracleAddress
           );
-          userRewardInformation.priceFeedDecimals = IEACAggregatorProxy(
-            userRewardInformation.rewardOracleAddress
-          ).decimals();
-          userRewardInformation.rewardPriceFeed = IEACAggregatorProxy(
-            userRewardInformation.rewardOracleAddress
-          ).latestAnswer();
+          uint256 pairIndex = sTokenIncentiveController.getRewardOracle(userRewardInformation.rewardTokenAddress);
+          ISupraSValueFeed.priceFeed memory svalue = supraSValueFeed.getSvalue(pairIndex);
+          userRewardInformation.priceFeedDecimals = uint8(svalue.decimals);
+          userRewardInformation.rewardPriceFeed = int256(svalue.price);
 
           sUserRewardsInformation[j] = userRewardInformation;
         }
