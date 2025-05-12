@@ -18,9 +18,9 @@ import {ISupraSValueFeed} from '@aave/core-v3/contracts/interfaces/ISupraSValueF
 contract RewardsController is RewardsDistributor, VersionedInitializable, IRewardsController {
   using SafeCast for uint256;
 
-  uint256 public constant REVISION = 1;
+  uint256 public constant REVISION = 2;
 
-  ISupraSValueFeed internal _supraSValueFeed;
+  address public _supraSValueFeed;
 
   // This mapping allows whitelisted addresses to claim on behalf of others
   // useful for contracts that hold tokens to be rewarded but don't have any native logic to claim Liquidity Mining rewards
@@ -43,8 +43,11 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
     _;
   }
 
-  constructor(address emissionManager, address supraSValueFeed) RewardsDistributor(emissionManager) {
-    _supraSValueFeed = ISupraSValueFeed(supraSValueFeed);
+  constructor(
+    address emissionManager,
+    address supraSValueFeed
+  ) RewardsDistributor(emissionManager) {
+    _supraSValueFeed = supraSValueFeed;
   }
 
   /**
@@ -106,11 +109,12 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
     _installTransferStrategy(reward, transferStrategy);
   }
 
+  function setSupraSValueFeed(address supraSValueFeed) external onlyOwner {
+    _supraSValueFeed = supraSValueFeed;
+  }
+
   /// @inheritdoc IRewardsController
-  function setRewardOracle(
-    address reward,
-    uint256 pairIndex
-  ) external onlyEmissionManager {
+  function setRewardOracle(address reward, uint256 pairIndex) external onlyEmissionManager {
     _setRewardOracle(reward, pairIndex);
   }
 
@@ -357,8 +361,11 @@ contract RewardsController is RewardsDistributor, VersionedInitializable, IRewar
    */
 
   function _setRewardOracle(address reward, uint256 pairIndex) internal {
-    require(_supraSValueFeed.getSvalue(pairIndex).price > 0, 'ORACLE_MUST_RETURN_PRICE');
+    require(
+      ISupraSValueFeed(_supraSValueFeed).getSvalue(pairIndex).price > 0,
+      'ORACLE_MUST_RETURN_PRICE'
+    );
     _rewardPairIndex[reward] = pairIndex;
     emit RewardOracleUpdated(reward, pairIndex);
   }
-} 
+}

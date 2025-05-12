@@ -6,6 +6,7 @@ import {IERC20Detailed} from '@aave/core-v3/contracts/dependencies/openzeppelin/
 import {SafeCast} from '@aave/core-v3/contracts/dependencies/openzeppelin/contracts/SafeCast.sol';
 import {IRewardsDistributor} from './interfaces/IRewardsDistributor.sol';
 import {RewardsDataTypes} from './libraries/RewardsDataTypes.sol';
+import {IOwnable} from './interfaces/IOwnable.sol';
 
 /**
  * @title RewardsDistributor
@@ -34,6 +35,11 @@ abstract contract RewardsDistributor is IRewardsDistributor {
 
   modifier onlyEmissionManager() {
     require(msg.sender == EMISSION_MANAGER, 'ONLY_EMISSION_MANAGER');
+    _;
+  }
+
+  modifier onlyOwner() {
+    require(msg.sender == IOwnable(EMISSION_MANAGER).owner(), 'ONLY_OWNER');
     _;
   }
 
